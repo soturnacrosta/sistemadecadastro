@@ -1,4 +1,3 @@
-//v0.3
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -11,12 +10,21 @@ typedef struct {
 
 } livro;
 
+typedef struct {
+    char *tituloBusca;
+    char *novos_dados;
+    int opcao; 
+
+} buscarDados;
+
 void liberarLivro (livro *book){
 
     free (book->titulo);
     free (book->autor);
 
 }
+
+void atualizarCadastro(FILE *arquivoBin, char* tituloBusca, char* novos_dados, int opcao);
 
 int main () {
 
@@ -42,7 +50,7 @@ int main () {
 
         }
 
-        printf ("Olá, digite 'R' para registrar uma pessoa, 'C' para consultar e 'F' para finalizar: \n");
+        printf ("Olá, digite 'R' para registrar uma pessoa, 'C' para consultar, 'A' para atualizar cadastro e 'F' para finalizar: \n");
         scanf (" %c", &condicao);
 
 
@@ -171,19 +179,104 @@ int main () {
 
                     }
 
-            if (condicao == 'F' || condicao == 'f'){
+                if (condicao == 'F' || condicao == 'f'){
 
-                printf ("Fechando...\n");
+                    printf ("Fechando...\n");
 
-                liberarLivro (&cadastro);
+                    liberarLivro (&cadastro);
+
+                }
+            
+            }
+
+            while (condicao == 'a' || condicao == 'A') {
+                
+                buscarDados busca;
+                busca.tituloBusca = malloc(50 * sizeof(char));
+                busca.novos_dados = malloc(50 * sizeof(char));
+
+
+                printf("Digite o título atualização: ");
+                scanf(" %49[^\n]", busca.tituloBusca);
+                printf("Digite os novos dados para atualização: ");
+                scanf(" %49[^\n]", busca.novos_dados);
+                printf("Digite a opção de atualização: ");
+                scanf("%d", &busca.opcao);
+
+                atualizarCadastro(arquivoBin, busca.tituloBusca, busca.novos_dados, busca.opcao);
+
+                printf("Digite 'A' para continuar a atualizar ou 'F' para finalizar: ");
+                scanf(" %c", &condicao);
+
+                free(busca.tituloBusca);
+                free(busca.novos_dados);
 
             }
-            
-        }
+
+        
     
     fclose (arquivoBin);
     free(pesquisaLivro);
     
     return (0);
+
+}
+
+void atualizarCadastro(FILE *arquivoBin, char* tituloBusca, char* novos_dados, int opcao) {
+    
+    livro cadastro;
+    size_t len_titulo, len_autor;
+    rewind(arquivoBin);
+
+        while (fread(&len_titulo, sizeof(size_t), 1, arquivoBin) == 1) {
+            cadastro.titulo = malloc(len_titulo * sizeof(char));
+            fread(cadastro.titulo, sizeof(char), len_titulo, arquivoBin);
+
+            fread(&len_autor, sizeof(size_t), 1, arquivoBin);
+            cadastro.autor = malloc(len_autor * sizeof(char));
+            fread(cadastro.autor, sizeof(char), len_autor, arquivoBin);
+
+            fread(&cadastro.paginas, sizeof(int), 1, arquivoBin);
+
+            if (strcmp(tituloBusca, cadastro.titulo) == 0 || strcmp(tituloBusca, cadastro.autor) == 0) {
+                printf("Livro encontrado: %s, %s, %d\n", cadastro.titulo, cadastro.autor, cadastro.paginas);
+
+                if (opcao == 1) {
+                    free(cadastro.titulo);
+                    len_titulo = strlen(novos_dados) + 1;
+                    cadastro.titulo = malloc(strlen(novos_dados) + 1);
+                    strcpy(cadastro.titulo, novos_dados);
+
+                }
+
+                else if (opcao == 2) { // Atualizar autor
+
+                    free(cadastro.autor);
+                    cadastro.autor = malloc(strlen(novos_dados) + 1);
+                    strcpy(cadastro.autor, novos_dados);
+                    len_autor = strlen(cadastro.autor) + 1; // Atualiza o tamanho do autor
+
+                } else if (opcao == 3) { // Atualizar número de páginas
+
+                    cadastro.paginas = atoi(novos_dados); // Converte o novo dado para inteiro
+                }
+
+                long deslocamento = -(long)(sizeof(size_t) + len_titulo + sizeof(size_t) + len_autor + sizeof(int));
+                fseek(arquivoBin, deslocamento, SEEK_CUR);
+
+                fwrite(&len_titulo, sizeof(size_t), 1, arquivoBin);
+                fwrite(cadastro.titulo, sizeof(char), len_titulo, arquivoBin);
+
+                fwrite(&len_autor, sizeof(size_t), 1, arquivoBin);
+                fwrite(cadastro.autor, sizeof(char), len_autor, arquivoBin);
+
+                fwrite(&cadastro.paginas, sizeof(int), 1, arquivoBin);
+
+                printf("Cadastro atualizado.\n");
+                break;
+            }
+
+        liberarLivro(&cadastro);
+    }
 
 }
