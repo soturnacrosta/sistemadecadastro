@@ -1,2 +1,0 @@
-# sistemabibliotecario
-Sistema bibliotecário
